@@ -306,7 +306,6 @@ static void DrawStandardKey(D2D1_RECT_F rect, bool highlight, float bgAlpha) {
         brush->Release(); brush = nullptr;
     }
 
-    // 边框颜色也进行了精调，浅色模式下边框用微弱的黑色，深色模式用微弱的白色
     float borderA = g_effectType == 1 ? (g_isDark ? 0.2f : 0.3f) : (g_isDark ? 0.1f : 0.2f);
     g_pRenderTarget->CreateSolidColorBrush(g_isDark ? D2D1::ColorF(1.0f, 1.0f, 1.0f, borderA * bgAlpha) : D2D1::ColorF(0.0f, 0.0f, 0.0f, borderA * bgAlpha), &brush);
     if (brush) {
