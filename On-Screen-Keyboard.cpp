@@ -17,6 +17,15 @@
 #include <vector>
 #include <string>
 
+// --- 图标资源引入区 ---
+// 如果你已经通过 VS 添加了 .ico 图标资源，请【取消注释】下面这一行：
+// #include "resource.h"
+
+// 防报错兜底设计：如果没有添加图标，使用系统默认图标宏
+#ifndef IDI_ICON1
+#define IDI_ICON1 32512 // 32512 是 IDI_APPLICATION 的底层数值
+#endif
+
 // --- DWM 材质常量 ---
 #ifndef DWMWA_SYSTEMBACKDROP_TYPE
 #define DWMWA_SYSTEMBACKDROP_TYPE 38
@@ -32,18 +41,18 @@ static constexpr UINT WM_TRAYICON = WM_APP + 1;
 
 // --- 全局状态与出厂默认配置 ---
 static bool g_isDark = true;
-static int g_effectType = 2;
-static int g_layoutType = 0;
+static int g_effectType = 2;               
+static int g_layoutType = 0;               
 static DWORD g_customColor = 0x000000;
 static bool g_useCustomColor = false;
-static int g_windowOpacity = 100;
-static bool g_textOpaque = false;
-static bool g_topMost = true;
-static bool g_hideFromTaskbar = false;
-static bool g_enableMouseTyping = false;
-static bool g_mouseClickThrough = false;
-static bool g_showSettingsBtn = true;
-static bool g_showHomingKeys = false;
+static int g_windowOpacity = 100;          
+static bool g_textOpaque = false;          
+static bool g_topMost = true;              
+static bool g_hideFromTaskbar = false;     
+static bool g_enableMouseTyping = false;   
+static bool g_mouseClickThrough = false;   
+static bool g_showSettingsBtn = true;      
+static bool g_showHomingKeys = false;      
 static bool g_restoredDefault = false;
 
 static HWND g_hwnd = nullptr;
@@ -60,7 +69,7 @@ struct KDef { int vk; const wchar_t* lbl; float x, y, w, h; };
 struct RenderKey { int vk = 0; std::wstring lbl; D2D1_RECT_F rect = { 0.0f, 0.0f, 0.0f, 0.0f }; };
 static std::vector<RenderKey> g_renderKeys;
 
-// 78键 60%布局
+// 78键 60%布局 (已修复所有 float 精度截断警告)
 static KDef layout78[] = {
     {VK_OEM_3,L"~",0.0f,0.0f,1.0f,1.0f}, {'1',L"1",1.0f,0.0f,1.0f,1.0f}, {'2',L"2",2.0f,0.0f,1.0f,1.0f}, {'3',L"3",3.0f,0.0f,1.0f,1.0f}, {'4',L"4",4.0f,0.0f,1.0f,1.0f}, {'5',L"5",5.0f,0.0f,1.0f,1.0f}, {'6',L"6",6.0f,0.0f,1.0f,1.0f}, {'7',L"7",7.0f,0.0f,1.0f,1.0f}, {'8',L"8",8.0f,0.0f,1.0f,1.0f}, {'9',L"9",9.0f,0.0f,1.0f,1.0f}, {'0',L"0",10.0f,0.0f,1.0f,1.0f}, {VK_OEM_MINUS,L"-",11.0f,0.0f,1.0f,1.0f}, {VK_OEM_PLUS,L"=",12.0f,0.0f,1.0f,1.0f}, {VK_BACK,L"Backspace",13.0f,0.0f,2.0f,1.0f},
     {VK_TAB,L"Tab",0.0f,1.0f,1.5f,1.0f}, {'Q',L"Q",1.5f,1.0f,1.0f,1.0f}, {'W',L"W",2.5f,1.0f,1.0f,1.0f}, {'E',L"E",3.5f,1.0f,1.0f,1.0f}, {'R',L"R",4.5f,1.0f,1.0f,1.0f}, {'T',L"T",5.5f,1.0f,1.0f,1.0f}, {'Y',L"Y",6.5f,1.0f,1.0f,1.0f}, {'U',L"U",7.5f,1.0f,1.0f,1.0f}, {'I',L"I",8.5f,1.0f,1.0f,1.0f}, {'O',L"O",9.5f,1.0f,1.0f,1.0f}, {'P',L"P",10.5f,1.0f,1.0f,1.0f}, {VK_OEM_4,L"[",11.5f,1.0f,1.0f,1.0f}, {VK_OEM_6,L"]",12.5f,1.0f,1.0f,1.0f}, {VK_OEM_5,L"\\",13.5f,1.0f,1.5f,1.0f},
@@ -205,8 +214,8 @@ static UINT_PTR CALLBACK CCHookProc(HWND hdlg, UINT uiMsg, WPARAM wParam, LPARAM
     else if (uiMsg == WM_TIMER) {
         if (!g_restoredDefault) {
             BOOL bR = FALSE, bG = FALSE, bB = FALSE;
-            UINT r = GetDlgItemInt(hdlg, 726, &bR, FALSE);
-            UINT g = GetDlgItemInt(hdlg, 727, &bG, FALSE);
+            UINT r = GetDlgItemInt(hdlg, 726, &bR, FALSE); 
+            UINT g = GetDlgItemInt(hdlg, 727, &bG, FALSE); 
             UINT b = GetDlgItemInt(hdlg, 728, &bB, FALSE);
             if (bR && bG && bB) {
                 DWORD newColor = RGB(r, g, b);
@@ -292,18 +301,15 @@ static void UpdateLayout(int clientW, int clientH) {
     UpdateTextFormat(h);
 }
 
-// --- 按键绘制彻底修复浅色模式的暗色问题 ---
 static void DrawStandardKey(D2D1_RECT_F rect, bool highlight, float bgAlpha) {
     D2D1_ROUNDED_RECT rr = D2D1::RoundedRect(rect, 4.0f, 4.0f);
-
-    // 【重要修正】浅色模式和深色模式的按键底色一律为纯白，通过不同的不透明度来呈现层次感
     float fillA = highlight ? (g_isDark ? 0.15f : 0.7f) : (g_isDark ? 0.05f : 0.4f);
     ID2D1SolidColorBrush* brush = nullptr;
-
+    
     g_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(1.0f, 1.0f, 1.0f, fillA * bgAlpha), &brush);
-    if (brush) {
+    if (brush) { 
         g_pRenderTarget->FillRoundedRectangle(rr, brush);
-        brush->Release(); brush = nullptr;
+        brush->Release(); brush = nullptr; 
     }
 
     float borderA = g_effectType == 1 ? (g_isDark ? 0.2f : 0.3f) : (g_isDark ? 0.1f : 0.2f);
@@ -317,7 +323,7 @@ static void DrawStandardKey(D2D1_RECT_F rect, bool highlight, float bgAlpha) {
 static void DrawLiquidKey(D2D1_RECT_F rect, bool highlight, float bgAlpha) {
     ID2D1SolidColorBrush* sb = nullptr;
     D2D1_ROUNDED_RECT shadow = D2D1::RoundedRect(D2D1::RectF(rect.left + 1.0f, rect.top + 3.0f, rect.right + 1.0f, rect.bottom + 3.0f), 6.0f, 6.0f);
-
+    
     g_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0.0f, 0.0f, 0.0f, (g_isDark ? 0.5f : 0.15f) * bgAlpha), &sb);
     if (sb) {
         g_pRenderTarget->FillRoundedRectangle(shadow, sb);
@@ -325,7 +331,6 @@ static void DrawLiquidKey(D2D1_RECT_F rect, bool highlight, float bgAlpha) {
     }
 
     ID2D1LinearGradientBrush* gb = nullptr; ID2D1GradientStopCollection* stops = nullptr; D2D1_GRADIENT_STOP gs[3] = { 0 };
-    // 【重要修正】浅色模式液态玻璃提高白度
     if (highlight) {
         float a1 = g_isDark ? 0.8f : 0.9f; float a2 = g_isDark ? 0.5f : 0.6f; float a3 = g_isDark ? 0.2f : 0.3f;
         gs[0] = { 0.0f, D2D1::ColorF(1.0f, 1.0f, 1.0f, a1 * bgAlpha) }; gs[1] = { 0.5f, D2D1::ColorF(1.0f, 1.0f, 1.0f, a2 * bgAlpha) }; gs[2] = { 1.0f, D2D1::ColorF(1.0f, 1.0f, 1.0f, a3 * bgAlpha) };
@@ -339,7 +344,7 @@ static void DrawLiquidKey(D2D1_RECT_F rect, bool highlight, float bgAlpha) {
         g_pRenderTarget->CreateLinearGradientBrush(D2D1::LinearGradientBrushProperties(D2D1::Point2F(rect.left, rect.top), D2D1::Point2F(rect.left, rect.bottom)), stops, &gb);
         D2D1_ROUNDED_RECT rr = D2D1::RoundedRect(rect, 6.0f, 6.0f);
         if (gb) { g_pRenderTarget->FillRoundedRectangle(rr, gb); gb->Release(); } stops->Release();
-
+        
         ID2D1SolidColorBrush* borderBrush = nullptr;
         g_pRenderTarget->CreateSolidColorBrush(g_isDark ? D2D1::ColorF(1.0f, 1.0f, 1.0f, 0.3f * bgAlpha) : D2D1::ColorF(0.0f, 0.0f, 0.0f, 0.15f * bgAlpha), &borderBrush);
         if (borderBrush) { g_pRenderTarget->DrawRoundedRectangle(rr, borderBrush, 1.2f); borderBrush->Release(); }
@@ -405,7 +410,6 @@ static void OnRender() {
             if (g_pTextFormat) {
                 if (g_textOpaque && globalAlpha < 1.0f) {
                     ID2D1SolidColorBrush* shadowBrush = nullptr;
-                    // 【重要修复】浅色模式下(黑字)，补光阴影应该是白色！
                     g_pRenderTarget->CreateSolidColorBrush(g_isDark ? D2D1::ColorF(0.0f, 0.0f, 0.0f, 0.8f) : D2D1::ColorF(1.0f, 1.0f, 1.0f, 0.9f), &shadowBrush);
                     if (shadowBrush) {
                         D2D1_RECT_F sRect = key.rect;
@@ -416,7 +420,7 @@ static void OnRender() {
                 }
                 g_pRenderTarget->DrawTextW(key.lbl.c_str(), static_cast<UINT32>(key.lbl.length()), g_pTextFormat, key.rect, textBrush);
             }
-
+            
             if (g_showHomingKeys && (key.vk == 'F' || key.vk == 'J')) {
                 float barW = 12.0f; float barH = 2.0f;
                 float cx = (key.rect.left + key.rect.right) / 2.0f; float cy = key.rect.bottom - 8.0f;
@@ -424,7 +428,6 @@ static void OnRender() {
 
                 if (g_textOpaque && globalAlpha < 1.0f) {
                     ID2D1SolidColorBrush* shadowBrush = nullptr;
-                    // 同理，定位键在浅色模式下也使用白色发光补偿
                     g_pRenderTarget->CreateSolidColorBrush(g_isDark ? D2D1::ColorF(0.0f, 0.0f, 0.0f, 0.8f) : D2D1::ColorF(1.0f, 1.0f, 1.0f, 0.9f), &shadowBrush);
                     if (shadowBrush) {
                         D2D1_RECT_F sRect = barRect;
@@ -433,7 +436,7 @@ static void OnRender() {
                         shadowBrush->Release();
                     }
                 }
-
+                
                 ID2D1SolidColorBrush* homingBrush = nullptr;
                 g_pRenderTarget->CreateSolidColorBrush(g_isDark ? D2D1::ColorF(0.75f, 0.75f, 0.75f, 1.0f) : D2D1::ColorF(0.35f, 0.35f, 0.35f, 1.0f), &homingBrush);
                 if (homingBrush) {
@@ -450,7 +453,7 @@ static void OnRender() {
         }
         textBrush->Release();
     }
-
+    
     g_pRenderTarget->EndDraw();
 }
 
@@ -525,7 +528,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 
         NOTIFYICONDATA nid = { 0 }; nid.cbSize = sizeof(NOTIFYICONDATA); nid.hWnd = hwnd; nid.uID = 1;
         nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP; nid.uCallbackMessage = WM_TRAYICON;
-        nid.hIcon = LoadIcon(NULL, IDI_APPLICATION); lstrcpy(nid.szTip, L"Win11 屏幕键盘");
+        
+        // 尝试加载用户添加的图标资源
+        nid.hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON1));
+        if (!nid.hIcon) nid.hIcon = LoadIcon(NULL, IDI_APPLICATION); // 兜底保护
+        
+        lstrcpy(nid.szTip, L"Win11 屏幕键盘");
         Shell_NotifyIcon(NIM_ADD, &nid);
 
         SetTimer(hwnd, 2, 50, NULL);
@@ -652,6 +660,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
     WNDCLASS wc = { 0 }; wc.lpfnWndProc = WndProc; wc.hInstance = hInstance;
     wc.lpszClassName = L"Win11OSK_Engine"; wc.hCursor = LoadCursor(NULL, IDC_ARROW); wc.style = CS_HREDRAW | CS_VREDRAW;
+    
+    // 尝试加载用户添加的图标资源作为窗口图标
+    wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1));
+    if (!wc.hIcon) wc.hIcon = LoadIcon(NULL, IDI_APPLICATION); // 兜底保护
+
     RegisterClass(&wc);
 
     DWORD exStyle = WS_EX_LAYERED | WS_EX_NOACTIVATE;
